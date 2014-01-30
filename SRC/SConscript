@@ -1,0 +1,8 @@
+Import('env', 'root_dir')
+src_files = Split('BUFFERIO.ASM HEXASCII.ASM UNBUFFIO.ASM TOKENS.ASM')
+strdos_lib = env.Library('STRDOS_' + env['MEMMODEL16'].upper() + '.LIB', src_files)
+env.Default(strdos_lib)
+#copy_lib = Execute(Copy(File('#/' + 'STRDOS_' + env['MEMMODEL16'].upper() + '.LIB'), strdos_lib[0]))
+Install(root_dir, source = strdos_lib)
+env.Alias('install', root_dir)
+
