@@ -5,7 +5,7 @@ else
 	.model small
 endif
 
-public print_str_unbuffered:near, print_value_b:near, print_value_w:near
+public print_str_unbuffered, print_value_b, print_value_w
 
 .code
 ;Do not use this module yet- not ready!
@@ -26,14 +26,14 @@ print_str_unbuffered proc near
 	push cx
 	push bp ;BP can be destroyed due to bug when scrolling.
 	push si
-	mov cx, 0x01
-	mov ah, 0x0E ;Teletype Output
+	mov cx, 1
+	mov ah, 0Eh ;Teletype Output
 next_char_u:
-	cmp byte ptr [si], 0x00
+	cmp byte ptr [si], 0
 	;jmp end_str
 	jz end_str_u
 	mov al, [si]
-	int 0x10
+	int 10h
 	inc si
 	jmp next_char_u
 end_str_u:
@@ -55,10 +55,10 @@ print_value_b proc near
 	push bp
 	mov cx, ax ;Preserve ax
 	mov al, ah
-	mov ah, 0x0E
-	int 0x10
+	mov ah, 0Eh
+	int 10h
 	mov al, cl
-	int 0x10
+	int 10h
 	mov ah, ch
 	pop bp
 	pop cx
@@ -76,14 +76,14 @@ print_value_w proc near
 	push bp
 	mov cx, ax
 	mov al, dh
-	mov ah, 0x0E
-	int 0x10
+	mov ah, 0Eh
+	int 10h
 	mov al, dl
-	int 0x10
+	int 10h
 	mov al, ch
-	int 0x10
+	int 10h
 	mov al, cl
-	int 0x10
+	int 10h
 	mov ax, cx
 	pop bp
 	pop cx

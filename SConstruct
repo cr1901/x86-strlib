@@ -8,9 +8,11 @@ lib_src_path = Dir('#/SRC')
 root_dir = Dir('#')
 
 #This also tests include and library paths
-env = Environment(tools = ['watcom'], CPPPATH=lib_src_path)
-env.Append(ASFLAGS='-bt=dos')
-env['MEMMODEL16']='s'
+env = Environment(tools = ['watcom', 'masm'], CPPPATH=lib_src_path)
+env['AS']='jwasm'
+env.Append(ASFLAGS='-D__DOS__ /Zi3')
+#env.Append(ASFLAGS='-bt=dos')
+#env['MEMMODEL16']='s'
 Export('env', 'lib_src_path', 'root_dir')
 SConscript('SRC/SConscript')
 SConscript('TEST/SConscript')

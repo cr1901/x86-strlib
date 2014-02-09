@@ -13,9 +13,9 @@ endif
 ;Two segments with the same name, but different classes, and the segment name is included into a group?
 ;Multiple segments with different names, have the same class, but only some of these segments are placed into a group? (Explained in manual)
 
-public io_init:near, print_str:near, flush_manual:near
+public io_init, print_str, flush_manual
 
-bufsiz equ 0x20
+bufsiz equ 20h
 
 .code
 ;Inputs to this function may vary depending on application.
@@ -46,7 +46,7 @@ io_init proc near
 	mov es:[string_tail], offset string_buffer
 	mov di, offset string_buffer
 	
-	mov al, 0x00
+	mov al, 0
 	mov cx, bufsiz
 	rep stosb
 	
@@ -94,11 +94,11 @@ print_str proc near
 next_char:
 	;delay
 	;test byte ptr [si], 0xFF
-	cmp byte ptr [si], 0x00 ;Check for null-terminator
+	cmp byte ptr [si], 0 ;Check for null-terminator
 	;jmp end_str
 	jz end_str
 	
-	cmp word ptr [si], 0x0D0A ;Check for newline
+	cmp word ptr [si], 0D0Ah ;Check for newline
 	jnz no_newline
 	movsb
 	movsb
@@ -159,18 +159,18 @@ ifdef __DOS__
 	;mov byte ptr [di], 0xB2 ;Symbol char- for debugging purposes
 	;mov byte ptr [di + 1], '$'
 	mov byte ptr [di], '$'
-	mov ah, 0x09
-	int 0x21
+	mov ah, 9h
+	int 21h
 	;mov si, dx For DOS, preserving SI not required in this routine...
 	;int 21h expects DS:DX instead- DX is still trashed.
 	
 else
 	mov dx, si ;Retain the old value of SI. DX is trashed.
 	mov si, offset string_buffer
-	mov ah, 0x0E ;Teletype output
+	mov ah, 0Eh ;Teletype output
 flush_next:	
 	lodsb ;al now holds character to print
-	int 0x10
+	int 10h
 	;delay
 	loop flush_next
 	mov si, dx ;Restore SI

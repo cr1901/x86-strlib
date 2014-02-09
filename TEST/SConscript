@@ -5,6 +5,6 @@ app_srcs = Split('DOSCMD.ASM')
 app_env = env.Clone()
 app_env['LIBPATH'] = lib_src_path
 app_env['LIBS'] = 'STRDOS_' + env['MEMMODEL16'].upper() + '.LIB'
-app_env.Append(LINKFLAGS = 'system dos option map=${TARGET.base}.map')
+app_env.Append(LINKFLAGS = 'system dos debug all option map=${TARGET.base}.map')
 app_env.Program(app_srcs)
 

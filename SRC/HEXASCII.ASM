@@ -6,7 +6,7 @@ else
 endif
 
 
-public hex_to_ascii:near, print_value_f:near
+public hex_to_ascii, print_value_f
 
 
 .code
@@ -21,17 +21,17 @@ hex_to_ascii proc near
 	;Probably not such an improvement after all due to need to manipulate
 	;return values.
 	
-	hex_value equ word ptr ss:[0x04 + bp]
-	temp_ascii equ ss:[-0x04 + bp]
+	hex_value equ word ptr ss:[4 + bp]
+	temp_ascii equ ss:[-4 + bp]
 	
 	push bp
 	mov bp, sp
-	sub sp, 0x04 ;We need temporary space for each hex byte.
+	sub sp, 4 ;We need temporary space for each hex byte.
 	push si
 	
 	mov ax, hex_value ;Skip the BP, IP get the input value
 	
-	mov cx, 0x04
+	mov cx, 4
 	xor si, si
 	mov dx, ax ;Save it temporarily
 	
@@ -75,6 +75,12 @@ hex_to_ascii endp
 ;BX- Page No/Foreground Color
 ;Registers are preserved.
 print_value_f proc near
+	;__cdecl stack
+	fpbuf_seg equ word ptr ss:[0Ah + bp]
+	fpbuf_off equ word ptr ss:[8 + bp]
+	print_seg equ word ptr ss:[6 + bp]
+	print_off equ word ptr ss:[4 + bp]
+
 	push bp
 	mov bp, sp
 	push ax
@@ -83,26 +89,26 @@ print_value_f proc near
 	push si
 	push ds
 	
-	mov ax, word ptr ss:[0x0A + bp] ;Get the segment of the ascii buffer
+	mov ax, word ptr ss:[0Ah + bp] ;Get the segment of the ascii buffer
 	mov ds, ax
-	mov ax, word ptr ss:[0x08 + bp] ;Get the offset of the ascii buffer
+	mov ax, word ptr ss:[8 + bp] ;Get the offset of the ascii buffer
 	mov si, ax
 	
-	mov ax, word ptr ss:[0x06 + bp] ;Get the segment to print first
+	mov ax, word ptr ss:[6 + bp] ;Get the segment to print first
 	push ax
 	call hex_to_ascii
-	add sp, 0x02
+	add sp, 2
 	xor bx, bx
 	mov word ptr ds:[si], dx
 	mov word ptr ds:[si + 2], ax
 	
-	mov al, 0x3A ;ASCII Colon
+	mov al, 3Ah ;ASCII Colon
 	mov byte ptr ds:[si + 4], al
 	
-	mov ax, word ptr ss:[0x04 + bp] ;Then get the offset
+	mov ax, word ptr ss:[4 + bp] ;Then get the offset
 	push ax
 	call hex_to_ascii
-	add sp, 0x02
+	add sp, 2
 	xor bx, bx
 	mov word ptr ds:[si + 5], dx
 	mov word ptr ds:[si + 7], ax
