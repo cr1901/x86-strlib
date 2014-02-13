@@ -172,7 +172,7 @@ str_token endp
 get_command_line proc near
 	;__cdecl stack
 	length_near_ptr equ word ptr ss:[4 + bp]
-	assume bx:ptr byte	;For my convenience
+	;assume bx:ptr byte	;For my convenience
 	
 	push bp
 	mov bp, sp
@@ -195,6 +195,7 @@ get_command_line proc near
 				;is used.
 	xor ch,ch		;Make sure only CL is nonzero
 	rep movsb
+	mov byte ptr es:[di], 0 ;Add a null terminator
 	mov ax, offset command_tail
 	pop es
 	pop ds

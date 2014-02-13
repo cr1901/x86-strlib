@@ -128,6 +128,29 @@ end_str:
 	ret
 print_str endp
 
+;__cdecl void cprint_str(char __far *)
+;C-callable print_str
+cprint_str proc near
+	fp_seg equ word ptr ss:[6 + bp]
+	fp_off equ word ptr ss:[4 + bp]
+	
+	push bp
+	mov bp, sp
+	push si
+	push ds
+	mov ax, fp_seg
+	mov ds, ax
+	mov si, fp_off
+	call print_str
+	pop ds
+	pop si
+	mov sp, bp
+	pop bp
+	ret
+cprint_str endp
+
+
+
 ;Returns: Clear Reset DI
 ;Trashes: AX, DX
 ;Assumes: ES points to the string buffer's segment.

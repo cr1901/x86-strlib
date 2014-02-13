@@ -1,10 +1,16 @@
 Import('env', 'lib_src_path')
 
-app_srcs = Split('DOSCMD.ASM')
+app_srcs = Split('DOSCMD.ASM DOSREAD.ASM')
 
 app_env = env.Clone()
 app_env['LIBPATH'] = lib_src_path
-app_env['LIBS'] = 'STRDOS_' + env['MEMMODEL16'].upper() + '.LIB'
+app_env['LIBS'] = 'STRDOS_' + env['MEMMODEL16'].upper()
 app_env.Append(LINKFLAGS = 'system dos debug all option map=${TARGET.base}.map')
-app_env.Program(app_srcs)
+
+dos_cmd = app_env.Object('DOSCMD.ASM')
+dos_read = app_env.Object('DOSREAD.ASM')
+zen_timer = app_env.Object('PZTIMER.ASM')
+
+app_env.Program(dos_cmd)
+app_env.Program([dos_read, zen_timer])
 

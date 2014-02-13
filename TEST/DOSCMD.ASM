@@ -10,17 +10,21 @@ extern get_command_line:near, io_init:near, print_str:near, flush_manual:near,
 .startup
 	;DS=>DGROUP, CS=>ERROR by using simplified segments.
 	call io_init
+	mov si, offset msg_cmdline
+	call print_str
 	mov ax, offset cl_length
 	push ax
 	call get_command_line
 	add sp, 2
-	mov si, ax ;DS:SI ready
+	;mov si, ax ;DS:SI ready
 	mov command_line_ptr, ax ;We need the beginning of the buffer later
 	call print_str
-	call flush_manual
+	mov si, offset msg_newline
+	call print_str
+	mov dx, si
 	mov si, offset msg_token_start
 	call print_str
-	call flush_manual
+	;call flush_manual
 	
 	;str_token parsing goes here.
 	;Push all nears, but str_token uses fars.
@@ -78,6 +82,7 @@ done_parse:
 .exit 0
 
 .const
+msg_cmdline 	db 'The input command line was: ', 0
 msg_token_start db 'Here are the tokens...', crlf, 0
 msg_token	db 'Token #', 0
 msg_done	db 'Done parsing tokens...', crlf, 0
@@ -86,7 +91,7 @@ msg_newline	db crlf, 0
 .data
 token_no_ascii	db 0, 0, crlf, 0 ;1 byte hex => 2 bytes ASCII
 dl_space db ' ', 0
-dl_with_crlf db ' ', crlf, 0
+dl_with_crlf db ' ,', crlf, 0
 
 .data?
 cl_length db ?

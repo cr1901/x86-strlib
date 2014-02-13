@@ -8,9 +8,21 @@ lib_src_path = Dir('#/SRC')
 root_dir = Dir('#')
 
 #This also tests include and library paths
-env = Environment(tools = ['watcom', 'masm'], CPPPATH=lib_src_path)
-env['AS']='jwasm'
-env.Append(ASFLAGS='-D__DOS__ /Zi3')
+env = Environment(tools = ['watcom'], CPPPATH=lib_src_path)
+
+env['MEMMODEL16']='s'
+
+if int(ARGUMENTS.get('TEST_WASM', False)) == 1:
+	env['USEWASM']=True
+	
+if env.subst('$AS') == 'jwasm':
+	#print 'JWASM detected... using in place of WASM.'
+	env = env.Clone(tools = ['masm'])
+	env['AS'] ='jwasm'
+	env.Append(ASFLAGS='/D__DOS__ /Zi3')
+elif env['AS'] == 'wasm':
+	env.Append(ASFLAGS='-D__DOS__ -bt=dos -d2')
+	
 #env.Append(ASFLAGS='-bt=dos')
 #env['MEMMODEL16']='s'
 Export('env', 'lib_src_path', 'root_dir')
