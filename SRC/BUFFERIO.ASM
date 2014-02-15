@@ -1,5 +1,5 @@
 .8086
-ifdef __DOS__
+ifdef __STRDOS__
 	.model small, nearstack
 else
 	.model small
@@ -35,7 +35,7 @@ io_init proc near
 	;mov ax, bss_seg ;or @fardata
 	;mov es, ax
 	
-	ifdef __DOS__
+	ifdef __STRDOS__
 		mov ax, far_bss		;mov ax, @fardata?
 		mov es, ax	
 		assume es:far_bss
@@ -84,7 +84,7 @@ print_str proc near
 	push es
 
 	;DOS Version
-	ifdef __DOS__
+	ifdef __STRDOS__
 		mov ax, far_bss		;mov ax, @fardata? for MASM 5.x
 		mov es, ax
 		
@@ -181,7 +181,7 @@ flush_buffer proc near
 
 
 
-ifdef __DOS__
+ifdef __STRDOS__
 	mov dx, offset string_buffer
 	;mov byte ptr [di], 0xB2 ;Symbol char- for debugging purposes
 	;mov byte ptr [di + 1], '$'
@@ -239,7 +239,7 @@ flush_buffer endp
 flush_manual proc near
 
 	;DOS Version
-	ifdef __DOS__
+	ifdef __STRDOS__
 		mov ax, far_bss		;mov ax, @fardata? for MASM 5.x
 		mov es, ax
 		
@@ -257,7 +257,7 @@ flush_manual endp
 
 
 ;string_tail is the "next free" location
-ifdef __DOS__
+ifdef __STRDOS__
 	.fardata?
 	string_tail dw ?
 	string_buffer db (bufsiz + 1) dup(?)

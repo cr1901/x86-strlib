@@ -1,5 +1,5 @@
 .8086
-ifdef __DOS__
+ifdef __STRDOS__
 	.model small, nearstack
 else
 	.model small
