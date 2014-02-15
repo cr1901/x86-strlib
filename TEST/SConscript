@@ -11,6 +11,6 @@ dos_cmd = app_env.Object('DOSCMD.ASM')
 dos_read = app_env.Object('DOSREAD.ASM')
 zen_timer = app_env.Object('PZTIMER.ASM')
 
-app_env.Program(dos_cmd)
+app_env.Program([dos_cmd, zen_timer])
 app_env.Program([dos_read, zen_timer])
 

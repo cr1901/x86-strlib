@@ -98,10 +98,10 @@ more_data2:
 
 next_tok:	
 	call str_token
-	;mov si, offset token_buf
-	;call print_str
-	;mov si, offset msg_newline
-	;call print_str
+	mov si, offset token_buf
+	call print_str
+	mov si, offset msg_newline
+	call print_str
 	
 	pop dx
 	add dx, ax		;Other buffers stay the same, "push" new offset

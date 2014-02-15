@@ -4,7 +4,7 @@
 crlf equ 0Ah,0Dh
 
 extern get_command_line:near, io_init:near, print_str:near, flush_manual:near,
-	str_token:near, hex_to_ascii:near
+	str_token:near, hex_to_ascii:near, ZTimerOn:far, ZTimerOff:far, ZTimerReport:far
 
 .code
 .startup
@@ -16,7 +16,7 @@ extern get_command_line:near, io_init:near, print_str:near, flush_manual:near,
 	push ax
 	call get_command_line
 	add sp, 2
-	;mov si, ax ;DS:SI ready
+	mov si, ax ;DS:SI ready
 	mov command_line_ptr, ax ;We need the beginning of the buffer later
 	call print_str
 	mov si, offset msg_newline
@@ -41,9 +41,18 @@ extern get_command_line:near, io_init:near, print_str:near, flush_manual:near,
 	xor bx, bx ;CX is not guaranteed to be valid between calls to str_token.
 		;Technically, neither is DX, but it's not used. I wonder if a modern
 		;compiler would recognize that?
+	call ZTimerOn
 next_tok:	
 	;Get a token
 	call str_token
+	;test ax, 0FFFFh
+	;jz done_parse
+	;pop dx
+	;add dx, ax		;Other buffers stay the same, "push" new offset
+	;push dx
+	;inc bx
+	;jmp next_tok
+	
 	mov si, offset msg_token
 	call print_str
 	;call flush_manual
@@ -74,10 +83,12 @@ next_tok:
 	jmp next_tok
 	
 done_parse:
+	call ZTimerOff
 	sub sp, 12 ;6 words
 	mov si, offset msg_done
 	call print_str
 	call flush_manual
+	call ZTimerReport
 	
 .exit 0
 

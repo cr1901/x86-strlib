@@ -46,11 +46,15 @@ next_digit:
 	
 	mov temp_ascii[si], al ;Save the value
 	mov ax, dx ;Shift to the next nibble
-	shr ax, 1 ;Inside loop: ax, cl form can't be used.
-	shr ax, 1
-	shr ax, 1
-	shr ax, 1
+	push cx ;push cl?
+	mov cl, 4
+	shr ax, cl
+	;shr ax, 1 ;Inside loop: ax, cl form can't be used.
+	;shr ax, 1
+	;shr ax, 1
+	;shr ax, 1
 	mov dx, ax ;Save the value again
+	pop cx ;pop cl?
 	inc si
 	loop next_digit
 	

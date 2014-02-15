@@ -39,8 +39,12 @@ io_init proc near
 		mov ax, far_bss		;mov ax, @fardata?
 		mov es, ax	
 		assume es:far_bss
+		;mov es:[string_tail], offset string_buffer
+		;mov di, offset string_buffer
 	else
 		assume es:bss_seg
+		;mov es:[string_tail], offset string_buffer
+		;mov di, offset string_buffer
 	endif
 	
 	mov es:[string_tail], offset string_buffer
@@ -48,8 +52,11 @@ io_init proc near
 	
 	mov al, 0
 	mov cx, bufsiz
-	rep stosb
-	
+	shr cx,1         ;adjust for words
+	rep stosw        ;copy words
+	adc cx,cx        ;cx=0 if even, cx=1 if odd
+	rep stosb        ;copies nothing if cx=0; copies 1 byte if cx=1
+
 	pop di
 	mov sp, bp
 	pop bp
@@ -100,8 +107,7 @@ next_char:
 	
 	cmp word ptr [si], 0D0Ah ;Check for newline
 	jnz no_newline
-	movsb
-	movsb
+	movsw
 	call flush_buffer
 	jmp next_char ;In case 0x00 is next
 no_newline:
@@ -138,9 +144,7 @@ cprint_str proc near
 	mov bp, sp
 	push si
 	push ds
-	mov ax, fp_seg
-	mov ds, ax
-	mov si, fp_off
+	lds si, dword ptr fp_off
 	call print_str
 	pop ds
 	pop si

@@ -49,13 +49,8 @@ str_token proc near
 	
 	;Prepare segment registers- Originally I wanted these reversed, but
 	;SCASB doesn't permit segment override.
-	mov ax, instr_seg
-	mov ds, ax
-	mov si, instr_offset
-	
-	mov ax, delim_seg
-	mov es, ax
-	mov di, delim_offset
+	lds si, dword ptr instr_offset
+	les di, dword ptr delim_offset
 	mov orig_delim_off, di ;Will need to be reset each loop and after finding
 				;length of delim_str
 	
@@ -66,7 +61,7 @@ str_token proc near
 	xor al, al ;Check for null terminator
 	repnz scasb ;SCAn until delimeter found or max traversed.
 	sub delim_length, cx ;And subtract the number of times looped.
-	dec delim_length
+	;dec delim_length
 	;jz bad_delim_str
 	
 	
@@ -81,6 +76,8 @@ next_ldelim:
 	inc di
 	mov al, es:[di]
 	cmp ds:[si], al
+	;dec si
+	;cmpsb
 	jz next_ldchar
 	loop next_ldelim
 	cmp byte ptr ds:[si], 0 ;Check if the current character is null terminator
@@ -118,10 +115,8 @@ next_delim:
 	;Null terminator was first character.
 	;Null terminator followed a chain of 0 or more leading delimiters.
 	;The string has been parsed to the null terminator on a PREVIOUS call.
-zero_length_str:	
-	mov ax, outbuf_seg
-	mov ds, ax
-	mov si, outbuf_offset
+zero_length_str:
+	lds si, dword ptr outbuf_offset
 	mov byte ptr ds:[si], 0 ;Save a byte/time with no segment override :P..
 	xor ax, ax
 	jmp cleanup
@@ -134,9 +129,7 @@ zero_length_str:
 	;output buffer! Append null terminator.
 delim_found:	
 end_of_str:
-	mov ax, outbuf_seg
-	mov es, ax
-	mov di, outbuf_offset ;Prepare ES:DI
+	les di, dword ptr outbuf_offset
 	
 	mov cx, si ;SI points to null terminator or delimiter
 	mov ax, si
@@ -144,9 +137,12 @@ end_of_str:
 	sub ax, instr_offset ;SI-instr_offset is the number of chars that were parsed
 				;from the intsr in this call of strtok.
 	mov si, start_token_offset
-
-	;mov ax, cx ;Return number of bytes to increment input string offset
-	rep movsb
+	
+	shr cx,1         ;adjust for words
+	rep movsw        ;copy words
+	adc cx,cx        ;cx=0 if even, cx=1 if odd
+	rep movsb        ;copies nothing if cx=0; copies 1 byte if cx=1
+	
 	mov byte ptr es:[di], 0 ;Transfer null terminator as well.
 	;jmp cleanup
 
