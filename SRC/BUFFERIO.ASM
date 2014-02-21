@@ -26,6 +26,7 @@ io_init proc near
 	push bp
 	mov bp, sp
 	push di
+	push es
 	
 	;Input version
 	;mov ax, [bp + 0x02]
@@ -56,7 +57,8 @@ io_init proc near
 	rep stosw        ;copy words
 	adc cx,cx        ;cx=0 if even, cx=1 if odd
 	rep stosb        ;copies nothing if cx=0; copies 1 byte if cx=1
-
+	
+	pop es
 	pop di
 	mov sp, bp
 	pop bp
