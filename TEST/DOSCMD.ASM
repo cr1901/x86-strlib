@@ -4,7 +4,8 @@
 crlf equ 0Ah,0Dh
 
 extern get_command_line:near, io_init:near, print_str:near, flush_manual:near,
-	str_token:near, hex_to_ascii:near, ZTimerOn:far, ZTimerOff:far, ZTimerReport:far
+	str_token:near, hex_to_ascii:near, ZTimerOn:far, ZTimerOff:far, 
+	ZTimerReport:far
 
 .code
 .startup
@@ -45,14 +46,9 @@ extern get_command_line:near, io_init:near, print_str:near, flush_manual:near,
 next_tok:	
 	;Get a token
 	call str_token
-	;test ax, 0FFFFh
-	;jz done_parse
-	;pop dx
-	;add dx, ax		;Other buffers stay the same, "push" new offset
-	;push dx
-	;inc bx
-	;jmp next_tok
-	
+	;How would a compiler decide what is better? Keep Far-Pointer in registers
+	;and preserve DX due to value being needed later, or store DX:AX in memory?
+	push dx ;print_str trashes DX
 	mov si, offset msg_token
 	call print_str
 	;call flush_manual
@@ -61,24 +57,34 @@ next_tok:
 	push ax
 	push bx
 	call hex_to_ascii
-	mov token_no_ascii + 1, ah ;LSB First
-	mov token_no_ascii, al	;Then MSB
+	;xchg ah, al
+	mov word ptr token_no_ascii, ax
+	;mov token_no_ascii + 1, ah ;LSB First
+	;mov token_no_ascii, al	;Then MSB
 	mov si, offset token_no_ascii
 	call print_str
 	add sp, 2
 	pop ax
 	
-	;Print the token
+
 	mov si, offset token_buf
 	call print_str
 	mov si, offset msg_newline
 	call print_str
-
-	test ax, 0FFFFh
-	jz done_parse
 	pop dx
-	add dx, ax		;Other buffers stay the same, "push" new offset
-	push dx
+	
+	mov di, sp	;We need an index register to directly modify the stack
+	cmp ax, ss:[di] ;The stack pointer currently points to the input fp buffer offset.
+			;Check if we are at the end of the string- DX:AX will equal
+			;the input pointer on the stack if we are at the end.
+	jne prepare_input
+	add di, 2
+	cmp dx, ss:[di]
+	je done_parse
+prepare_input:
+	add sp, 4
+	push dx		;Other buffers stay the same, "push" new offset
+	push ax
 	inc bx
 	jmp next_tok
 	
