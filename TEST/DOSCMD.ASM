@@ -48,30 +48,33 @@ next_tok:
 	call str_token
 	;How would a compiler decide what is better? Keep Far-Pointer in registers
 	;and preserve DX due to value being needed later, or store DX:AX in memory?
-	push dx ;print_str trashes DX
-	mov si, offset msg_token
-	call print_str
-	;call flush_manual
 	
-	;Print token number
-	push ax
-	push bx
-	call hex_to_ascii
-	;xchg ah, al
-	mov word ptr token_no_ascii, ax
-	;mov token_no_ascii + 1, ah ;LSB First
-	;mov token_no_ascii, al	;Then MSB
-	mov si, offset token_no_ascii
-	call print_str
-	add sp, 2
-	pop ax
-	
-
-	mov si, offset token_buf
-	call print_str
-	mov si, offset msg_newline
-	call print_str
-	pop dx
+	ifdef PRINT_OUTPUT
+		push dx ;print_str trashes DX
+		mov si, offset msg_token
+		call print_str
+		;call flush_manual
+		
+		;Print token number
+		push ax
+		push bx
+		call hex_to_ascii
+		;xchg ah, al
+		mov word ptr token_no_ascii, ax
+		;mov token_no_ascii + 1, ah ;LSB First
+		;mov token_no_ascii, al	;Then MSB
+		mov si, offset token_no_ascii
+		call print_str
+		add sp, 2
+		pop ax
+		
+		
+		mov si, offset token_buf
+		call print_str
+		mov si, offset msg_newline
+		call print_str
+		pop dx
+	endif
 	
 	mov di, sp	;We need an index register to directly modify the stack
 	cmp ax, ss:[di] ;The stack pointer currently points to the input fp buffer offset.
