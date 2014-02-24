@@ -145,6 +145,11 @@ loop_compare_copy:
 							;Loop if AL is not equal to AH
 							;Fall through if AL equals AH (delim found)
 							
+	;Possible outcomes:
+	;Delimiter was found! Now, store the input str's token into the 
+	;output buffer! Append null terminator. Return pointer to the character
+	;AFTER the trailing delimiter. This permits us to change delimiters mid-string
+	;or use a C-compatible str_token and keep going with the same delimiter.						
 delim_found:
 	xor   al, al ;Append null terminator to output string
 	stosb
@@ -152,63 +157,6 @@ delim_found:
 	mov  ax, cx
 	pop bp ;Get the frame pointer back
 	jmp cleanup
-
-	;LODSB_JZ_JNE_AH next_ldchar, loop_check_next_ldchar			
-	;First delim str length
-	;mov cx, max_delim_length
-	;mov delim_length, max_delim_length
-	;xor al, al ;Check for null terminator
-	;repnz scasb ;SCAn until delimeter found or max traversed.
-	;sub delim_length, cx ;And subtract the number of times looped.
-	;dec delim_length
-	;jz bad_delim_str
-	
-	
-	;Then, truncate leading delimiters
-	;dec si ;To reduce the number of jumps (prefetch queue flushes), increments are at beginning of loop.
-;next_ldchar:
-	;inc si
-	;mov di, orig_delim_off
-	;dec di ;To reduce the number of jumps (prefetch queue flushes), increments are at beginning of loop.
-	;mov cx, delim_length
-;next_ldelim:
-	;inc di
-	;mov al, es:[di]
-	;cmp ds:[si], al
-	;dec si
-	;cmpsb
-	;jz next_ldchar
-	;loop next_ldelim
-	;cmp byte ptr ds:[si], 0 ;Check if the current character is null terminator
-	;jz zero_length_str ;If null was found, store a null terminator in the output buffer
-			;and return 0 length.
-	
-			
-	;Next, scan the string until the next delimiter is found.		
-	;mov start_token_offset, si ;Save the start of the token and restore 
-				;the delimiter's offset
-	;dec si ;To reduce the number of jumps, increments are at beginning of loop.
-;next_char:	
-	;inc si
-	;This will not jump to end_of_str when zero_length_str was intended due
-	;to preceding jump logic.
-	;cmp byte ptr ds:[si], 0 ;Check if current char is null- don't bother other processing
-			;for char if null was found.
-	;jz end_of_str
-	;xor cx, cx		;Reset CX- stores token length
-	;mov di, orig_delim_off
-	;dec di ;To reduce the number of jumps, increments are at beginning of loop.
-;next_delim:
-	;inc di
-	;mov al, es:[di] 
-	;cmp ds:[si], al	;Compare the input string to the delimiter
-	;jz delim_found
-	;inc cx
-	;cmp cx, delim_length
-	;jl next_delim   ;Delim length actually includes null terminator. Hence not
-			;JLE (For sub, DEST <= DEST - SRC)
-	;jmp next_char 	;Otherwise, move on to next character.
-	
 	
 	;Possible outcomes to get to this point (all equivalent):
 	;Null terminator was first character.
@@ -245,11 +193,7 @@ end_of_str:
 	dec ax ;We need to point to the old terminator.
 	;jmp cleanup
 	
-	;Possible outcomes:
-	;Delimiter was found! Now, store the input str's token into the 
-	;output buffer! Append null terminator. Return pointer to the character
-	;AFTER the trailing delimiter. This permits us to change delimiters mid-string
-	;or use a C-compatible str_token and keep going with the same delimiter.
+
 
 
 

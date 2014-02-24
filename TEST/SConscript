@@ -1,11 +1,15 @@
-Import('env', 'lib_src_path')
+Import('env', 'lib_src_path', 'debug')
 
 app_srcs = Split('DOSCMD.ASM DOSREAD.ASM HEX.ASM')
 
 app_env = env.Clone()
 app_env['LIBPATH'] = lib_src_path
 app_env['LIBS'] = 'STRDOS_' + env['MEMMODEL16'].upper()
-app_env.Append(LINKFLAGS = 'system dos debug all option map=${TARGET.base}.map')
+app_env.Append(LINKFLAGS = 'system dos option map=${TARGET.base}.map')
+if int(debug):
+	app_env.Append(LINKFLAGS = 'debug all')
+	
+
 
 dos_cmd = app_env.Object('DOSCMD.ASM')
 dos_read = app_env.Object('DOSREAD.ASM')
@@ -13,6 +17,7 @@ zen_timer = app_env.Object('PZTIMER.ASM')
 
 app_env.Program([dos_cmd, zen_timer])
 app_env.Program([dos_read, zen_timer])
+app_env.Program('BIOSDUMP.ASM')
 
 hex_env = app_env.Clone(LIBS='STRINT_' + env['MEMMODEL16'].upper())
 hex_exe = hex_env.Program('HEX.ASM')

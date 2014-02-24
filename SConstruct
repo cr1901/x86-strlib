@@ -13,15 +13,19 @@ env = Environment(tools = ['watcom'], CPPPATH=lib_src_path)
 #A bit of work to convert input command line arguments dictionary from string to int.
 if int(ARGUMENTS.get('TEST_WASM', False)) == 1:
 	env['USEWASM']=True
+debug = ARGUMENTS.get('DEBUG', 0)
+
 env['MEMMODEL16']=ARGUMENTS.get('MEMMODEL', 's')
 	
 if env.subst('$AS') == 'jwasm':
 	#print 'JWASM detected... using in place of WASM.'
 	env = env.Clone(tools = ['masm'])
 	env['AS'] ='jwasm'
-	env.Append(ASFLAGS='/Zi3')
+	if int(debug):
+		env.Append(ASFLAGS='/Zi3')
 elif env.subst('$AS') == 'wasm':
-	env.Append(ASFLAGS='-d2')
+	if int(debug):
+		env.Append(ASFLAGS='-d2')
 
 #Create target-specific environments
 int_env = env.Clone()
@@ -35,6 +39,6 @@ elif env.subst('$AS') == 'wasm':
 	
 #env.Append(ASFLAGS='-bt=dos')
 #env['MEMMODEL16']='s'
-Export('env', 'dos_env', 'int_env', 'lib_src_path', 'root_dir')
+Export('env', 'dos_env', 'int_env', 'lib_src_path', 'root_dir', 'debug')
 SConscript('SRC/SConscript')
 SConscript('TEST/SConscript')
