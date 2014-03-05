@@ -135,6 +135,7 @@ file_bad:
 	
 	push ax
 	call hex_to_ascii
+	xchg al, ah ;Correct for endianness- strings are byte-based.
 	mov si, offset msg_error
 	;Load error code into AX- no assumes needed since this is small model
 	mov word ptr [(error_code - msg_error) + si], ax

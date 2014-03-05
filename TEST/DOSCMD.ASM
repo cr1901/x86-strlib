@@ -49,7 +49,7 @@ next_tok:
 	;How would a compiler decide what is better? Keep Far-Pointer in registers
 	;and preserve DX due to value being needed later, or store DX:AX in memory?
 	
-	ifdef PRINT_OUTPUT
+	;ifdef PRINT_OUTPUT
 		push dx ;print_str trashes DX
 		mov si, offset msg_token
 		call print_str
@@ -59,7 +59,7 @@ next_tok:
 		push ax
 		push bx
 		call hex_to_ascii
-		;xchg ah, al
+		xchg ah, al ;Correct for endianness
 		mov word ptr token_no_ascii, ax
 		;mov token_no_ascii + 1, ah ;LSB First
 		;mov token_no_ascii, al	;Then MSB
@@ -74,7 +74,7 @@ next_tok:
 		mov si, offset msg_newline
 		call print_str
 		pop dx
-	endif
+	;endif
 	
 	mov di, sp	;We need an index register to directly modify the stack
 	cmp ax, ss:[di] ;The stack pointer currently points to the input fp buffer offset.
