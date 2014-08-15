@@ -8,37 +8,18 @@ lib_src_path = Dir('#/SRC')
 root_dir = Dir('#')
 
 #This also tests include and library paths
-env = Environment(tools = ['watcom'], CPPPATH=lib_src_path)
-
-#A bit of work to convert input command line arguments dictionary from string to int.
-if int(ARGUMENTS.get('TEST_WASM', False)) == 1:
-	env['USEWASM']=True
+env = Environment(tools = ['watcom', 'nasm'], CPPPATH=lib_src_path)
 debug = ARGUMENTS.get('DEBUG', 0)
-
-env['MEMMODEL16']=ARGUMENTS.get('MEMMODEL', 's')
-	
-if env.subst('$AS') == 'jwasm':
-	#print 'JWASM detected... using in place of WASM.'
-	env = env.Clone(tools = ['masm'])
-	env['AS'] ='jwasm'
-	if int(debug):
-		env.Append(ASFLAGS='/Zi3')
-elif env.subst('$AS') == 'wasm':
-	if int(debug):
-		env.Append(ASFLAGS='-d2')
 
 #Create target-specific environments
 int_env = env.Clone()
 dos_env = env.Clone()
 
-if env.subst('$AS') == 'jwasm':
-	dos_env.Prepend(ASFLAGS='/D__STRDOS__')
-elif env.subst('$AS') == 'wasm':
-	dos_env.Prepend(ASFLAGS='-D__STRDOS__')
-	dos_env.Append(ASFLAGS='-bt=dos')
-	
-#env.Append(ASFLAGS='-bt=dos')
-#env['MEMMODEL16']='s'
+dos_env.Prepend(ASFLAGS='-D__STRDOS__')
+dos_env.Append(ASFLAGS='-f obj')
+int_env.Append(ASFLAGS='-f obj')
+
 Export('env', 'dos_env', 'int_env', 'lib_src_path', 'root_dir', 'debug')
 SConscript('SRC/SConscript')
 SConscript('TEST/SConscript')
+
