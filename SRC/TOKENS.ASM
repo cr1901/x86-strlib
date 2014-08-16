@@ -1,14 +1,9 @@
-.8086
-ifdef __STRDOS__
-	.model small, nearstack
-else
-	.model small
-endif
+cpu CPU_TARGET
 
-include MACROS.INC
+%include "MACROS.ASM"
 
 ;Exported vars
-public str_token, get_command_line
+global str_token, get_command_line
 
 ;Constants
 max_delim_length equ 07Fh
@@ -18,25 +13,24 @@ max_delim_length equ 07Fh
 ;http://www.vintage-computer.com/vcforum/showthread.php?41240-A-library-of-string-subroutines-critique&p=314527#post314527
 ;Should only be run when ds:si is pointing at delimiter string
 ;
-LOAD_INPUT_STRING macro
+%macro LOAD_INPUT_STRING 0
 	mov   si, cx
 	mov   bp, ds
 	xchg  bp, dx
 	mov   ds, bp
-endm
+%endmacro
 
 ;Should only be run when ds:si is pointing at input string
 
-LOAD_DELIMITER_STRING macro
+%macro LOAD_DELIMITER_STRING 0
 	mov   bp, ds
 	xchg  bp, dx
 	mov   ds, bp
 	mov   cx, si
 	mov   si, bx
 	mov   ah, al
-endm
+%endmacro
 
-.code
 
 ;struct
 
@@ -53,14 +47,13 @@ endm
 ;This strtok may be useable as a strsep by checking the return value... possible
 ;future expansion.
 ;http://stackoverflow.com/questions/2377760/strtok-and-empty-fields
-str_token proc near
+str_token:
 	;__cdecl stack
-	outbuf_fp equ dword ptr ss:[0Ch + bp]
-	delim_fp equ dword ptr ss:[8 + bp]
-	instr_seg equ word ptr ss:[6 + bp]
-	instr_offset equ word ptr ss:[4 + bp]
+%define	outbuf_fp ss:0Ch + bp
+%define	delim_fp ss:8 + bp
+%define	instr_seg ss:6 + bp
+%define	instr_offset ss:4 + bp
 
-	
 	;Locals
 	;delim_length equ word ptr ss:[bp - 2]
 	;orig_instr_off equ word ptr ss:[bp - 4]
@@ -90,10 +83,10 @@ str_token proc near
 	;AL : input character, delimiter character
 	;BP : Pushed frame pointer, scratch register for xchg
 	
-	lds bx, delim_fp
-	les di, outbuf_fp
-	mov dx, instr_seg
-	mov cx, instr_offset
+	lds bx, [delim_fp]
+	les di, [outbuf_fp]
+	mov dx, [instr_seg]
+	mov cx, [instr_offset]
 
 ;ldchar = Leading Delimiter CHARacter
 next_ldchar:	
@@ -118,19 +111,6 @@ loop_check_next_ldchar:
 	or al, al ;Check if we are at the end of the delimiter string.
 	jne loop_check_next_ldchar ;If there are no leading delimiters left, there
 			;was no match, and we fall through to the next section.
-	
-	
-	;push cx
-;next_char:
-;	LOAD_INPUT_STRING
-;	LODSB_JZ end_of_str
-;	LOAD_DELIMITER_STRING
-;	
-;loop_compare_non_copy:
-;	LODSB_JZ_JNE_AH next_char, loop_compare_non_copy ;Jump if AL is zero (no delimiter match) to next_char
-							;Loop if AL is not equal to AH
-							;Fall through if AL equals AH (delim found)
-							
 	dec cx	;When we checked for leading delimiters, the first non-match
 		;caused the input string to point past the start of the relevant
 		;token- correct for this by decrementing the offset copy to be
@@ -171,8 +151,8 @@ zero_length_str:
 	stosb
 	;mov byte ptr es:[di], 0 ;Save a byte/time with no segment override :P..
 	pop bp ;We need the old BP back
-	mov dx, instr_seg
-	mov ax, instr_offset
+	mov dx, [instr_seg]
+	mov ax, [instr_offset]
 	;push bp 
 	jmp cleanup
 	
@@ -191,29 +171,7 @@ end_of_str:
 	mov dx, ds
 	mov ax, si
 	dec ax ;We need to point to the old terminator.
-	;jmp cleanup
 	
-
-
-
-
-	;les di, dword ptr outbuf_fp
-	;
-	;mov cx, si ;SI points to null terminator or delimiter
-	;mov ax, si
-	;sub cx, start_token_offset ;SI-start_token_offset is number of chars to xfer...
-	;sub ax, instr_offset ;SI-instr_offset is the number of chars that were parsed
-	;			;from the intsr in this call of strtok.
-	;mov si, start_token_offset
-	;
-	;shr cx,1         ;adjust for words
-	;rep movsw        ;copy words
-	;adc cx,cx        ;cx=0 if even, cx=1 if odd
-	;rep movsb        ;copies nothing if cx=0; copies 1 byte if cx=1
-	;
-	;mov byte ptr es:[di], 0 ;Transfer null terminator as well.
-	;jmp cleanup
-
 cleanup:
 	;pop bp
 	pop es
@@ -229,8 +187,7 @@ cleanup:
 output_char:
 	mov  al, ah
 	stosb
-	jmp   next_char_copy		
-str_token endp
+	jmp   next_char_copy
 
 
 ;Stores a copy of the DOS command line in a near buffer (inside DGROUP).
@@ -240,9 +197,9 @@ str_token endp
 ;is stored.
 ;Return: AL- Length of Command Line
 ;Preserves- All registers besides CX
-get_command_line proc near
+get_command_line:
 	;__cdecl stack
-	length_near_ptr equ word ptr ss:[4 + bp]
+%define	length_near_ptr ss:4 + bp
 	;assume bx:ptr byte	;For my convenience
 	
 	push bp
@@ -255,19 +212,19 @@ get_command_line proc near
 	int 21h ;Get PSP segment: BX holds segment on return
 	mov ds, bx
 	mov si, 81h ;Start of command-line
-	mov ax, @data ;Alias for DGROUP
+	mov ax, seg command_tail
 	mov es, ax 
 	;assume es:@data ;Actually, this assume might not be necessary...
-	mov di, offset command_tail
-	mov bx, length_near_ptr
-	mov cl, byte ptr ds:[80h] ;Length of command line is stored here
-	mov byte ptr es:[bx], cl ;Return the command line length to the pointed-to char. Since
+	mov di, command_tail
+	mov bx, [length_near_ptr]
+	mov cl, [ds:80h] ;Length of command line is stored here
+	mov [es:bx], cl ;Return the command line length to the pointed-to char. Since
 				;DS doesn't point to the correct place, segment override
 				;is used.
 	xor ch,ch		;Make sure only CL is nonzero
 	rep movsb
-	mov byte ptr es:[di], 0 ;Add a null terminator
-	mov ax, offset command_tail
+	mov byte [es:di], 0 ;Add a null terminator
+	mov ax, command_tail
 	pop es
 	pop ds
 	pop bx
@@ -275,14 +232,7 @@ get_command_line proc near
 	mov sp, bp
 	pop bp
 	ret
-get_command_line endp
 
-.data?
-command_tail db 129 dup(?)	;Why are contents retained between invocations?
-
-;.data
-;command_tail db 128 dup(0)
-;ct_end: ;Errors out for some reason
-ct_end label byte
-
-end
+segment str_bss private align=16 'STR_BSS'
+command_tail: resb 129h	;Why are contents retained between invocations?
+ct_end: resb 1h

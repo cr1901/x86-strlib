@@ -1,13 +1,7 @@
-.8086
-ifdef __STRDOS__
-	.model small, nearstack
-else
-	.model small
-endif
+cpu CPU_TARGET
 
-public print_str_unbuffered, print_value_b, print_value_w
+global print_str_unbuffered, print_value_b, print_value_w
 
-.code
 ;Do not use this module yet- not ready!
 
 
@@ -21,28 +15,27 @@ public print_str_unbuffered, print_value_b, print_value_w
 ;at those times.
 
 ;This function has not been updated for DOS usage yet.
-print_str_unbuffered proc near
+print_str_unbuffered:
 	push ax
 	push cx
 	push bp ;BP can be destroyed due to bug when scrolling.
 	push si
 	mov cx, 1
 	mov ah, 0Eh ;Teletype Output
-next_char_u:
-	cmp byte ptr [si], 0
+.next_char:
+	cmp byte [si], 0
 	;jmp end_str
-	jz end_str_u
+	jz .end_str
 	mov al, [si]
 	int 10h
 	inc si
-	jmp next_char_u
-end_str_u:
+	jmp .next_char
+.end_str:
 	pop si
 	pop bp
 	pop cx
 	pop ax
 	ret
-print_str_unbuffered endp
 
 
 ;print_value_b_unbuffered?
@@ -50,7 +43,7 @@ print_str_unbuffered endp
 ;Inputs: AX- Value to print.
 ;BX- Page No/Foreground Color
 ;Registers are preserved.
-print_value_b proc near
+print_value_b:
 	push cx
 	push bp
 	mov cx, ax ;Preserve ax
@@ -63,7 +56,6 @@ print_value_b proc near
 	pop bp
 	pop cx
 	ret
-print_value_b endp
 
 
 ;print_value_w_unbuffered?
@@ -71,7 +63,7 @@ print_value_b endp
 ;Inputs: DX:AX- Value to print.
 ;BX- Page No/Foreground Color
 ;Registers are preserved.
-print_value_w proc near
+print_value_w:
 	push cx
 	push bp
 	mov cx, ax
@@ -88,5 +80,3 @@ print_value_w proc near
 	pop bp
 	pop cx
 	ret
-print_value_w endp
-end

@@ -1,28 +1,16 @@
-.8086
-ifdef __STRDOS__
-	.model small, nearstack
-else
-	.model small
-endif
-
-;This module provides an I/O interface, depending on OS (none or DOS).
-;Move all buffers to I/O, export all but string buffer.
-
-;What happens when?...
-;Two segments with the same name, one public, one private, and the segment name is included into a group?
-;Two segments with the same name, but different classes, and the segment name is included into a group?
-;Multiple segments with different names, have the same class, but only some of these segments are placed into a group? (Explained in manual)
-
-public io_init, print_str, flush_manual
+cpu CPU_TARGET
+%include "MACROS.ASM"
 
 bufsiz equ 20h
 
-.code
+global io_init, print_str, flush_manual
+
 ;Inputs to this function may vary depending on application.
 ;Example: ES could be set internally, externally, or could be an input!
 ;For the monitor, ES is set externally. See commented code for example for
 ;other versions.
-io_init proc near
+
+io_init:
 	push bp
 	mov bp, sp
 	push di
@@ -36,20 +24,13 @@ io_init proc near
 	;mov ax, bss_seg ;or @fardata
 	;mov es, ax
 	
-	ifdef __STRDOS__
-		mov ax, far_bss		;mov ax, @fardata?
-		mov es, ax	
-		assume es:far_bss
-		;mov es:[string_tail], offset string_buffer
-		;mov di, offset string_buffer
-	else
-		assume es:bss_seg
-		;mov es:[string_tail], offset string_buffer
-		;mov di, offset string_buffer
-	endif
+%ifidni HOST_ENV, INT21H
+	mov ax, far_bss		;mov ax, @fardata?
+	mov es, ax
+%endif
 	
-	mov es:[string_tail], offset string_buffer
-	mov di, offset string_buffer
+	mov [es:string_tail], word string_buffer
+	mov di, string_buffer
 	
 	mov al, 0
 	mov cx, bufsiz
@@ -63,12 +44,7 @@ io_init proc near
 	mov sp, bp
 	pop bp
 	ret
-io_init endp
-
-
-
-
-
+	
 ;Inputs:
 ;BH- Page Number
 ;BL- Foreground Color
@@ -76,7 +52,7 @@ io_init endp
 ;Returns: 
 ;Registers are preserved (or should be, barring bug in INT 0x10).
 ;Assumes: ES points to the string buffer's segment (ROM version).
-print_str proc near
+print_str:
 	push ax
 	push cx
 	push dx ;DX trashed by flush_buffer
@@ -86,28 +62,22 @@ print_str proc near
 	push es
 
 	;DOS Version
-	ifdef __STRDOS__
+%ifidni HOST_ENV, INT21H
 		mov ax, far_bss		;mov ax, @fardata? for MASM 5.x
-		mov es, ax
-		
-		;If not using .fardata? the segment override in mov di, ... can be eliminated!
-		assume es:far_bss
-	else
-		;ROMable version makes other assumptions, so above two instructions
-		;aren't needed!
-		assume es:bss_seg
-	endif
-	
-	mov di, es:[string_tail]
+		mov es, ax ;If not using .fardata? the segment override in mov di, ... can be eliminated!
+%endif
+	;ROMable version makes other assumptions, so above two instructions
+	;aren't needed!
+	mov di, [es:string_tail]
 	
 next_char:
 	;delay
 	;test byte ptr [si], 0xFF
-	cmp byte ptr [si], 0 ;Check for null-terminator
+	cmp byte [si], 0 ;Check for null-terminator
 	;jmp end_str
 	jz end_str
 	
-	cmp word ptr [si], 0D0Ah ;Check for newline
+	cmp word [si], 0D0Ah ;Check for newline
 	jnz no_newline
 	movsw
 	call flush_buffer
@@ -118,14 +88,14 @@ no_newline:
 	;source files.
 no_tab:
 
-	cmp di, offset string_buffer + bufsiz ;Check that buffer is full 
+	cmp di, string_buffer + bufsiz ;Check that buffer is full 
 	jl no_flush
 	call flush_buffer
 no_flush:	
 	movsb
 	jmp next_char
 end_str:
-	mov es:[string_tail], di
+	mov [es:string_tail], di
 	pop es
 	pop si
 	pop di
@@ -134,26 +104,28 @@ end_str:
 	pop cx
 	pop ax
 	ret
-print_str endp
 
 ;__cdecl void cprint_str(char __far *)
 ;C-callable print_str
-cprint_str proc near
-	fp_seg equ word ptr ss:[6 + bp]
-	fp_off equ word ptr ss:[4 + bp]
-	
+cprint_str:
+;%push cprint_str_context
+;%arg fp_seg:word
+;%arg fp_off:word
+%define fp_seg ss:6 + bp
+%define fp_off ss:4 + bp
+
 	push bp
 	mov bp, sp
 	push si
 	push ds
-	lds si, dword ptr fp_off
+	lds si, [fp_off]
 	call print_str
 	pop ds
 	pop si
 	mov sp, bp
 	pop bp
 	ret
-cprint_str endp
+;%pop
 
 
 
@@ -170,32 +142,32 @@ cprint_str endp
 
 ;Note to myself after not looking at this for a few months... is the above
 ;paragraph still valid?
-flush_buffer proc near
+flush_buffer:
 	;push si
 	push ds
 	mov ax, es
 	mov ds, ax ;String buffer now becomes the source string.
 	
 	mov cx, di ;DI holds the current tail.
-	sub cx, offset string_buffer
+	sub cx, string_buffer
 	jz dont_bother ;If tail = buffer_offset, looping will loop 0xFFFF times!
 			;This check SHOULD only be relevant when flush_manual is called.
 
 
 
-ifdef __STRDOS__
-	mov dx, offset string_buffer
+%ifidni HOST_ENV, INT21H
+	mov dx, string_buffer
 	;mov byte ptr [di], 0xB2 ;Symbol char- for debugging purposes
 	;mov byte ptr [di + 1], '$'
-	mov byte ptr [di], '$'
+	mov byte [di], '$'
 	mov ah, 9h
 	int 21h
 	;mov si, dx For DOS, preserving SI not required in this routine...
 	;int 21h expects DS:DX instead- DX is still trashed.
 	
-else
+%else
 	mov dx, si ;Retain the old value of SI. DX is trashed.
-	mov si, offset string_buffer
+	mov si, string_buffer
 	mov ah, 0Eh ;Teletype output
 flush_next:	
 	lodsb ;al now holds character to print
@@ -203,32 +175,13 @@ flush_next:
 	;delay
 	loop flush_next
 	mov si, dx ;Restore SI
-endif
+%endif
 
-	mov di, offset string_buffer ;Reset the string tail	
+	mov di, string_buffer ;Reset the string tail	
 dont_bother:	
 	pop ds
 	;pop si
 	ret
-flush_buffer endp
-
-
-;Returns: Clear Reset DI
-;Trashes: AX, DX
-;The last string in the program should flush the buffer with a newline.
-;This is because, for speed considerations, the buffer looks at DI instead of
-;string_tail to determine where to place a terminator and DI may not be valid
-;outside this module (hence flush_buffer is private).
-;flush_buffer proc near
-;	mov dx, offset string_buffer
-;	;mov [di], 0xB2 ;Symbol char
-;	;mov [di + 1], '$'
-;	mov [di], '$'
-;	mov ah, 0x09
-;	int 0x21
-;	mov di, offset string_buffer
-;	ret
-;flush_buffer endp
 
 
 ;Returns: Clear Reset DI
@@ -238,37 +191,29 @@ flush_buffer endp
 ;This is because, for speed considerations, the buffer looks at DI instead of
 ;string_tail to determine where to place a terminator. DI may not be valid
 ;outside this module (hence flush_buffer is private).
-flush_manual proc near
-
+flush_manual:
 	;DOS Version
-	ifdef __STRDOS__
-		mov ax, far_bss		;mov ax, @fardata? for MASM 5.x
-		mov es, ax
-		
-		;If not using .fardata? the segment override in mov di, ... can be eliminated!
-		assume es:far_bss
-	endif
-	
-	mov di, es:[string_tail]
+%ifidni HOST_ENV, INT21H
+	mov ax, far_bss		;mov ax, @fardata? for MASM 5.x
+	mov es, ax		;If not using .fardata? the segment override in mov di, ... can be eliminated!
+%endif
+	mov di, [es:string_tail]
 	;mov [di], 0xB1 ;Symbol char
 	;inc di
 	call flush_buffer
-	mov es:[string_tail], di
+	mov [es:string_tail], di
 	ret
-flush_manual endp
 
 
 ;string_tail is the "next free" location
-ifdef __STRDOS__
-	.fardata?
-	string_tail dw ?
-	string_buffer db (bufsiz + 1) dup(?)
+%ifidni HOST_ENV, INT21H
+segment far_bss private align=16 'FAR_BSS'
+string_tail: resw 1h
+string_buffer: resb (bufsiz + 1)
 	
-else
-	bss_seg segment word public 'FAR_BSS'
-		string_tail dw ?
-		string_buffer db (bufsiz + 1) dup(?)
-	bss_seg ends
-endif	
+%else
+segment bss_seg public align=16 'FAR_BSS'
+string_tail: resw 1h
+string_buffer: resb (bufsiz + 1)
+%endif
 
-end
