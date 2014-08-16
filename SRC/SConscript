@@ -1,3 +1,5 @@
+import os.path
+
 Import('int_env', 'dos_env', 'root_dir')
 src_files = Split('BUFFERIO.ASM HEXASCII.ASM UNBUFFIO.ASM TOKENS.ASM')
 
@@ -6,11 +8,15 @@ strdos_objs = []
 for src in src_files:
 	strint_objs.append(int_env.Object(str(src)[0:3] + 'INT', src))
 	strdos_objs.append(dos_env.Object(str(src)[0:3] + 'DOS', src))
-	
+
+#strint_lst = [os.path.splitext(str(src))[0] + '.lst' for src in strint_objs]
+#strdos_lst = [os.path.splitext(str(src))[0] + '.lst' for src in strdos_objs]
 
 strint_lib = int_env.Library('STRINT_' + int_env['MEMMODEL16'].upper() + '.LIB', strint_objs)
 strdos_lib = dos_env.Library('STRDOS_' + dos_env['MEMMODEL16'].upper() + '.LIB', strdos_objs)
 Default(strdos_lib)
+#Clean(strint_lib, strint_lst)
+#Clean(strdos_lib, strdos_lst)
 #copy_lib = Execute(Copy(File('#/' + 'STRDOS_' + env['MEMMODEL16'].upper() + '.LIB'), strdos_lib[0]))
 Install(root_dir, source = [strdos_lib, strint_lib])
 Alias('install', root_dir)
