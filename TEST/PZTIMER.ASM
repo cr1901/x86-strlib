@@ -46,11 +46,11 @@
 ; in when ZTimerOn was called.
 ;
 
-;Modified to use far calls- W. Jones
+;Modified to use far calls and NASM W. Jones
 
-Code	segment word public 'CODE'
-	assume	cs:Code, ds:nothing
-	public	ZTimerOn, ZTimerOff, ZTimerReport
+global	ZTimerOn, ZTimerOff, ZTimerReport
+
+segment code class=CODE
 
 ;
 ; Base address of the 8253 timer chip.
@@ -81,47 +81,47 @@ IRR			equ	20h
 ; 80286 chips which allows interrupts to occur during a POPF even when
 ; interrupts remain disabled.
 ;
-MPOPF macro 
-	local	p1, p2
-	jmp short p2
-p1:	iret			;jump to pushed address & pop flags
-p2:	push	cs		;construct far return address to
-	call	p1		; the next instruction
-	endm
+%macro MPOPF  0
+	jmp %%p2
+%%p1:	iret			;jump to pushed address & pop flags
+%%p2:	push	cs		;construct far return address to
+	call	%%p1		; the next instruction
+%endmacro
 
 ;
 ; Macro to delay briefly to ensure that enough time has elapsed
 ; between successive I/O accesses so that the device being accessed
 ; can respond to both accesses even on a very fast PC.
 ;
-DELAY	macro
+%macro DELAY 0
 	jmp	$+2
 	jmp	$+2
 	jmp	$+2
-	endm
+%endmacro
 
-OriginalFlags		db	?	;storage for upper byte of
+OriginalFlags:		resb	1	;storage for upper byte of
 					; FLAGS register when
 					; ZTimerOn called
-TimedCount		dw	?	;timer 0 count when the timer
+TimedCount:		resw	1	;timer 0 count when the timer
 					; is stopped
-ReferenceCount		dw	?	;number of counts required to
+ReferenceCount:		resw	1	;number of counts required to
 					; execute timer overhead code
-OverflowFlag		db	?	;used to indicate whether the
+OverflowFlag:		resb	1	;used to indicate whether the
 					; timer overflowed during the
 					; timing interval
 ;
 ; String printed to report results.
 ;
-OutputStr	label	byte
-		db	0dh, 0ah, 'Timed count: ', 5 dup (?)
-ASCIICountEnd	label	byte
+OutputStr:
+		db	0dh, 0ah, 'Timed count: '
+		resb 5
+ASCIICountEnd:
 		db	' microseconds', 0dh, 0ah
 		db	'$'
 ;
 ; String printed to report timer overflow.
 ;
-OverflowStr	label	byte
+OverflowStr:
 	db	0dh, 0ah
 	db	'****************************************************'
 	db	0dh, 0ah
@@ -141,7 +141,7 @@ OverflowStr	label	byte
 ;* Routine called to start timing.				    *
 ;********************************************************************
 
-ZTimerOn	proc	far
+ZTimerOn:
 
 ;
 ; Save the context of the program being timed.
@@ -151,7 +151,7 @@ ZTimerOn	proc	far
 	pop	ax			;get flags so we can keep
 					; interrupts off when leaving
 					; this routine
-	mov	cs:[OriginalFlags],ah	;remember the state of the
+	mov	[cs:OriginalFlags],ah	;remember the state of the
 					; Interrupt flag
 	and	ah,0fdh 		;set pushed interrupt flag
 					; to 0
@@ -187,9 +187,7 @@ ZTimerOn	proc	far
 ; occur. Here, 10 jumps are used for the delay to ensure that the
 ; delay time will be more than long enough even on a very fast PC.
 ;
-	rept 10
-	jmp	$+2
-	endm
+	times 10 jmp	$+2
 ;
 ; Disable interrupts to get an accurate count.
 ;
@@ -211,14 +209,12 @@ ZTimerOn	proc	far
 	pop	ax
 	ret
 
-ZTimerOn	endp
 
 ;********************************************************************
 ;* Routine called to stop timing and get count.			    *
 ;********************************************************************
 
-ZTimerOff proc	far
-
+ZTimerOff:
 ;
 ; Save the context of the program being timed.
 ;
@@ -241,7 +237,7 @@ ZTimerOff proc	far
 					; register
 	and	al,1			;set AL to 1 if IRQ0 (the
 					; timer interrupt) is pending
-	mov	cs:[OverflowFlag],al	;store the timer overflow
+	mov	[cs:OverflowFlag],al	;store the timer overflow
 					; status
 ;
 ; Allow interrupts to happen again.
@@ -258,30 +254,30 @@ ZTimerOff proc	far
 	neg	ax			;convert from countdown
 					; remaining to elapsed
 					; count
-	mov	cs:[TimedCount],ax
+	mov	word [cs:TimedCount],ax
 ; Time a zero-length code fragment, to get a reference for how
 ; much overhead this routine has. Time it 16 times and average it,
 ; for accuracy, rounding the result.
 ;
-	mov	cs:[ReferenceCount],0
+	mov	word [cs:ReferenceCount],0
 	mov	cx,16
 	cli				;interrupts off to allow a
 					; precise reference count
 RefLoop:
-	call	far ptr ReferenceZTimerOn
-	call	far ptr ReferenceZTimerOff
+	call	far ReferenceZTimerOn
+	call	far ReferenceZTimerOff
 	loop	RefLoop
 	sti
-	add	cs:[ReferenceCount],8	;total + (0.5 * 16)
+	add	word [cs:ReferenceCount],8	;total + (0.5 * 16)
 	mov	cl,4
-	shr	cs:[ReferenceCount],cl	;(total) / 16 + 0.5
+	shr	word [cs:ReferenceCount],cl	;(total) / 16 + 0.5
 ;
 ; Restore original interrupt state.
 ;
 	pop	ax			;retrieve flags when called
-	mov	ch,cs:[OriginalFlags]	;get back the original upper
+	mov	ch,[cs:OriginalFlags]	;get back the original upper
 					; byte of the FLAGS register
-	and	ch,not 0fdh		;only care about original
+	and	ch,~0fdh		;only care about original
 					; interrupt flag...
 	and	ah,0fdh			;...keep all other flags in
 					; their current condition
@@ -297,13 +293,11 @@ RefLoop:
 	pop	ax
 	ret
 
-ZTimerOff endp
-
 ;
 ; Called by ZTimerOff to start timer for overhead measurements.
 ;
 
-ReferenceZTimerOn	proc	far
+ReferenceZTimerOn:
 ;
 ; Save the context of the program being timed.
 ;
@@ -330,14 +324,12 @@ ReferenceZTimerOn	proc	far
 	pop	ax
 	ret
 
-ReferenceZTimerOn	endp
-
 ;
 ; Called by ZTimerOff to stop timer and add result to ReferenceCount
 ; for overhead measurements.
 ;
 
-ReferenceZTimerOff proc	far
+ReferenceZTimerOff:
 ;
 ; Save the context of the program being timed.
 ;
@@ -358,7 +350,7 @@ ReferenceZTimerOff proc	far
 	neg	ax			;convert from countdown
 					; remaining to amount
 					; counted down
-	add	cs:[ReferenceCount],ax
+	add	[cs:ReferenceCount],ax
 ;
 ; Restore the context of the program being timed and return to it.
 ;
@@ -367,13 +359,11 @@ ReferenceZTimerOff proc	far
 	pop	ax
 	ret
 
-ReferenceZTimerOff endp
-
 ;********************************************************************
 ;* Routine called to report timing results.			    *
 ;********************************************************************
 
-ZTimerReport	proc	far
+ZTimerReport:
 
 	pushf
 	push	ax
@@ -385,13 +375,12 @@ ZTimerReport	proc	far
 ;
 	push	cs	;DOS functions require that DS point
 	pop	ds	; to text to be displayed on the screen
-	assume	ds:Code
 ;
 ; Check for timer 0 overflow.
 ;
-	cmp	[OverflowFlag],0
+	cmp	byte [OverflowFlag],0
 	jz	PrintGoodCount
-	mov	dx,offset OverflowStr
+	mov	dx, OverflowStr
 	mov	ah,9
 	int	21h
 	jmp	short EndZTimerReport
@@ -401,7 +390,7 @@ ZTimerReport	proc	far
 PrintGoodCount:
 	mov	ax,[TimedCount]
 	sub	ax,[ReferenceCount]
-	mov	si,offset ASCIICountEnd - 1
+	mov	si,ASCIICountEnd - 1
 ;
 ; Convert count to microseconds by multiplying by .8381.
 ;
@@ -425,7 +414,7 @@ CTSLoop:
 ; Print the results.
 ;
 	mov	ah,9
-	mov	dx,offset OutputStr
+	mov	dx, OutputStr
 	int	21h
 ;
 EndZTimerReport:
@@ -437,9 +426,5 @@ EndZTimerReport:
 	pop	ax
 	MPOPF
 	ret
-
-ZTimerReport	endp
-
-Code	ends
-	end
+	
 

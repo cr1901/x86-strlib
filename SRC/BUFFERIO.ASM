@@ -11,10 +11,8 @@ global io_init, print_str, flush_manual
 ;other versions.
 
 io_init:
-	push bp
-	mov bp, sp
-	push di
-	push es
+	prolog
+	multipush di, es
 	
 	;Input version
 	;mov ax, [bp + 0x02]
@@ -32,17 +30,15 @@ io_init:
 	mov [es:string_tail], word string_buffer
 	mov di, string_buffer
 	
-	mov al, 0
+	xor ax, ax
 	mov cx, bufsiz
 	shr cx,1         ;adjust for words
 	rep stosw        ;copy words
 	adc cx,cx        ;cx=0 if even, cx=1 if odd
 	rep stosb        ;copies nothing if cx=0; copies 1 byte if cx=1
 	
-	pop es
-	pop di
-	mov sp, bp
-	pop bp
+	multipop di, es
+	epilog
 	ret
 	
 ;Inputs:
@@ -53,13 +49,8 @@ io_init:
 ;Registers are preserved (or should be, barring bug in INT 0x10).
 ;Assumes: ES points to the string buffer's segment (ROM version).
 print_str:
-	push ax
-	push cx
-	push dx ;DX trashed by flush_buffer
-	push bp ;BP can be destroyed due to bug when scrolling.
-	push di
-	push si
-	push es
+	multipush ax, cx, dx, bp, di, si, es ;DX trashed by flush_buffer
+	;BP can be destroyed due to bug when scrolling.
 
 	;DOS Version
 %ifidni HOST_ENV, INT21H
@@ -77,7 +68,11 @@ next_char:
 	;jmp end_str
 	jz end_str
 	
-	cmp word [si], 0D0Ah ;Check for newline
+	;cmp byte [si], 0x0A0D is likely faster in most cases, but I'm
+	;not fond of unaligned accesses.
+	cmp byte [si], 0x0D ;Check for newline
+	jnz no_newline
+	cmp byte [si + 1], 0x0A ;Check for newline
 	jnz no_newline
 	movsw
 	call flush_buffer
@@ -96,13 +91,7 @@ no_flush:
 	jmp next_char
 end_str:
 	mov [es:string_tail], di
-	pop es
-	pop si
-	pop di
-	pop bp
-	pop dx
-	pop cx
-	pop ax
+	multipop ax, cx, dx, bp, di, si, es
 	ret
 
 ;__cdecl void cprint_str(char __far *)
@@ -111,19 +100,14 @@ cprint_str:
 ;%push cprint_str_context
 ;%arg fp_seg:word
 ;%arg fp_off:word
-%define fp_seg ss:6 + bp
-%define fp_off ss:4 + bp
+	defargs near, fp_off, 2, fp_seg, 2
 
-	push bp
-	mov bp, sp
-	push si
-	push ds
+	prolog
+	multipush si, ds
 	lds si, [fp_off]
 	call print_str
-	pop ds
-	pop si
-	mov sp, bp
-	pop bp
+	multipop si, ds
+	epilog
 	ret
 ;%pop
 

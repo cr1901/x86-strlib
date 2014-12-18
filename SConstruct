@@ -16,8 +16,7 @@ debug = ARGUMENTS.get('DEBUG', 0)
 
 if debug:
 	env.Prepend(ASFLAGS='-DDEBUG')
-env.Append(ASFLAGS='-f obj -l ' + str(lib_src_path) + os.sep + \
-	'${TARGET.filebase}.lst -i ' + str(lib_src_path) + os.sep)	
+env.Append(ASFLAGS='-f obj -l ${TARGET.base}.lst -i ' + str(lib_src_path) + os.sep)	
 
 #Create target-specific environments
 int_env = env.Clone()

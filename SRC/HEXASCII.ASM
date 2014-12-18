@@ -39,12 +39,11 @@ hex_to_ascii:
 	;Probably not such an improvement after all due to need to manipulate
 	;return values.
 	
-%define	hex_value ss:4 + bp
-%define	temp_ascii ss:-4 + bp
+	
+	defargs near, hex_value, 2
+	deflocals temp_ascii, 4
 
-	push bp
-	mov bp, sp
-	sub sp, 4 ;We need temporary space for each hex byte.
+	prolog 4
 	push si
 	
 	mov ax, [hex_value] ;Skip the BP, IP get the input value
@@ -75,8 +74,7 @@ next_digit:
 	pop si ;Preserve SI
 	pop ax ;Low two digits of ASCII (points to temp_ascii)
 	pop dx ;High two digits of ASCII (temp_ascii + 0x02)
-	mov sp, bp
-	pop bp
+	epilog
 	retn
 
 
@@ -88,17 +86,10 @@ next_digit:
 ;Registers are preserved.
 print_value_f:
 ;__cdecl stack
-%define fpbuf ss:8 + bp
-%define print_seg ss:6 + bp
-%define	print_off ss:4 + bp
+	defargs near, print_off, 2, print_seg, 2, fpbuf, 4
 
-	push bp
-	mov bp, sp
-	push ax
-	push dx
-	push bx
-	push si
-	push ds
+	prolog
+	multipush ax, dx, bx, si, ds
 	
 	lds si, [fpbuf]
 	mov ax, [print_seg] ;Get the segment to print first
@@ -124,14 +115,8 @@ print_value_f:
 	mov [ds:si + 5], dx
 	mov [ds:si + 7], ax
 	
-	
-	pop ds
-	pop si
-	pop bx
-	pop dx
-	pop ax
-	mov sp, bp
-	pop bp
+	multipop ax, dx, bx, si, ds
+	epilog
 	retn
 
 ;uint32_t __cdecl ascii_to_hex(uint8_t __far * fp_buffer)

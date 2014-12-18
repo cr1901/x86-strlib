@@ -1,4 +1,6 @@
 cpu CPU_TARGET
+%include "MACROS.ASM"
+
 
 global print_str_unbuffered, print_value_b, print_value_w
 
@@ -16,10 +18,7 @@ global print_str_unbuffered, print_value_b, print_value_w
 
 ;This function has not been updated for DOS usage yet.
 print_str_unbuffered:
-	push ax
-	push cx
-	push bp ;BP can be destroyed due to bug when scrolling.
-	push si
+	multipush ax, cx, bp, si ;BP can be destroyed due to bug when scrolling.
 	mov cx, 1
 	mov ah, 0Eh ;Teletype Output
 .next_char:
@@ -31,10 +30,7 @@ print_str_unbuffered:
 	inc si
 	jmp .next_char
 .end_str:
-	pop si
-	pop bp
-	pop cx
-	pop ax
+	multipop ax, cx, bp, si
 	ret
 
 

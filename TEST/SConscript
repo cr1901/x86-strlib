@@ -5,6 +5,7 @@ app_srcs = Split('DOSCMD.ASM DOSREAD.ASM HEX.ASM')
 app_env = env.Clone()
 app_env['LIBPATH'] = lib_src_path
 app_env['LIBS'] = 'STRDOS_' + env['MEMMODEL16'].upper()
+app_env.Prepend(ASFLAGS='-DCPU_TARGET=8086')
 app_env.Append(LINKFLAGS = 'system dos option map=${TARGET.base}.map')
 if int(debug):
 	app_env.Append(LINKFLAGS = 'debug all')
